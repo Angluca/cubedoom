@@ -5,9 +5,12 @@ This is a lightweight arena shooter, consisting over under 1000 LOC, and raycast
 To build, clone this repository, and install:
 
 - The [Spectre Programming Language](https://spectrelang.org) Toolchain
-- SDL2 Dev Dependency
-- SDL2_Image Dev Dependency
+- SDL2 Dev Dependency (libsdl2-dev)
+- SDL2_Image Dev Dependency (libsdl2-image-dev)
 
 And run `./build.sh`
 
 <img src="screens/cubedoom.png">
+
+License: GPL-3.0-only - By Navid M
+
