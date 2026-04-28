@@ -10,4 +10,4 @@ To build, clone this repository, and install:
 
 And run `./build.sh`
 
-A [demonstration] of the gameplay.
+<img src="screens/cubedoom.png">
