@@ -1,3 +1,5 @@
+extern "SDL.h"
+
 link "-lSDL2"
 link "-lSDL2_image"
 link "-lm"
