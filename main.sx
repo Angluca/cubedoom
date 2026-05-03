@@ -160,33 +160,29 @@ fn player_shoot() void! = {
     val invDet: f32 = 1.0 / det
 
     val ei: mut i32 = 0
-    for {
-        if ei < MAX_ENEMIES {
-            val e: mut ref Enemy = get_enemy(ei)
-            if e.alive != 0 {
-                val dx: f32 = (e.x + 4.0) - pCX
-                val dy: f32 = (e.y + 4.0) - pCY
-                val tx: f32 = invDet * (player.dirY * dx - player.dirX * dy)
-                val ty: f32 = invDet * (-player.planeY * dx + player.planeX * dy)
-                if ty > 0.0 {
-                    val depth: f32 = ty / (TILE_SIZE as f32)
-                    val sx: f32 = (SCREEN_WIDTH as f32 / 2.0) * (1.0 + tx / ty)
-                    val cdist: f32 = sx - (SCREEN_WIDTH as f32 / 2.0)
-                    val col: i32 = SCREEN_WIDTH / 2
-                    val zdist: usize = @load(@ptradd(zbuf, (col as usize) * 8)) as usize
-                    val ez: usize = (depth * 100000.0) as usize
-                    if fabsf(cdist) < 80.0 && ez < zdist {
-                        e.health -= 1
-                        if e.health <= 0 {
-                            e.alive = 0
-                        }
+    for ei < MAX_ENEMIES {
+        val e: mut ref Enemy = get_enemy(ei)
+        if e.alive != 0 {
+            val dx: f32 = (e.x + 4.0) - pCX
+            val dy: f32 = (e.y + 4.0) - pCY
+            val tx: f32 = invDet * (player.dirY * dx - player.dirX * dy)
+            val ty: f32 = invDet * (-player.planeY * dx + player.planeX * dy)
+            if ty > 0.0 {
+                val depth: f32 = ty / (TILE_SIZE as f32)
+                val sx: f32 = (SCREEN_WIDTH as f32 / 2.0) * (1.0 + tx / ty)
+                val cdist: f32 = sx - (SCREEN_WIDTH as f32 / 2.0)
+                val col: i32 = SCREEN_WIDTH / 2
+                val zdist: usize = @load(@ptradd(zbuf, (col as usize) * 8)) as usize
+                val ez: usize = (depth * 100000.0) as usize
+                if fabsf(cdist) < 80.0 && ez < zdist {
+                    e.health -= 1
+                    if e.health <= 0 {
+                        e.alive = 0
                     }
                 }
             }
-            ei++
-        } else {
-            break
         }
+        ei++
     }
 }
 
@@ -195,114 +191,102 @@ fn update_enemies(dt: f32) void! = {
     val pCY: f32 = player.y + 4.0
 
     val ei: mut i32 = 0
-    for {
-        if ei < MAX_ENEMIES {
-            val e: mut ref Enemy = get_enemy(ei)
-            if e.alive != 0 {
-                val dx: f32 = pCX - (e.x + 4.0)
-                val dy: f32 = pCY - (e.y + 4.0)
-                val dist: f32 = sqrtf(dx * dx + dy * dy)
+    for ei < MAX_ENEMIES {
+        val e: mut ref Enemy = get_enemy(ei)
+        if e.alive != 0 {
+            val dx: f32 = pCX - (e.x + 4.0)
+            val dy: f32 = pCY - (e.y + 4.0)
+            val dist: f32 = sqrtf(dx * dx + dy * dy)
 
-                if dist > 80.0 && dist < 2000.0 {
-                    val nx: f32 = dx / dist
-                    val ny: f32 = dy / dist
-                    val newX: f32 = e.x + nx * ENEMY_SPEED * dt
-                    val newY: f32 = e.y + ny * ENEMY_SPEED * dt
+            if dist > 80.0 && dist < 2000.0 {
+                val nx: f32 = dx / dist
+                val ny: f32 = dy / dist
+                val newX: f32 = e.x + nx * ENEMY_SPEED * dt
+                val newY: f32 = e.y + ny * ENEMY_SPEED * dt
 
-                    val tx: i32 = ((newX + 4.0) / 64.0) as i32
-                    val ty: i32 = ((e.y + 4.0) / 64.0) as i32
-                    match @get(map, ty, tx) {
-                        some v => { if v == 0 { e.x = newX } }
-                        none => {}
-                    }
-
-                    val tx2: i32 = ((e.x + 4.0) / 64.0) as i32
-                    val ty2: i32 = ((newY + 4.0) / 64.0) as i32
-                    match @get(map, ty2, tx2) {
-                        some v2 => { if v2 == 0 { e.y = newY } }
-                        none => {}
-                    }
+                val tx: i32 = ((newX + 4.0) / 64.0) as i32
+                val ty: i32 = ((e.y + 4.0) / 64.0) as i32
+                match @get(map, ty, tx) {
+                    some v => { if v == 0 { e.x = newX } }
+                    none => {}
                 }
 
-                e.shootTimer -= dt
-                if e.shootTimer <= 0.0 {
-                    e.shootTimer = ENEMY_SHOOT_INTERVAL + (ei as f32) * 0.3
-
-                    val bi: mut i32 = 0
-                    for {
-                        if bi < MAX_BULLETS {
-                            val blt: mut ref Bullet = get_bullet(bi)
-                            if blt.alive == 0 {
-                                val bdx: f32 = pCX - (e.x + 4.0)
-                                val bdy: f32 = pCY - (e.y + 4.0)
-                                val bdist: f32 = sqrtf(bdx * bdx + bdy * bdy)
-                                if bdist > 0.0 {
-                                    blt.x = e.x + 4.0
-                                    blt.y = e.y + 4.0
-                                    blt.dx = (bdx / bdist) * BULLET_SPEED
-                                    blt.dy = (bdy / bdist) * BULLET_SPEED
-                                    blt.alive = 1
-                                    blt.isPlayer = 0
-                                }
-                                break
-                            }
-                            bi++
-                        } else {
-                            break
-                        }
-                    }
+                val tx2: i32 = ((e.x + 4.0) / 64.0) as i32
+                val ty2: i32 = ((newY + 4.0) / 64.0) as i32
+                match @get(map, ty2, tx2) {
+                    some v2 => { if v2 == 0 { e.y = newY } }
+                    none => {}
                 }
             }
-            ei++
-        } else {
-            break
+
+            e.shootTimer -= dt
+            if e.shootTimer <= 0.0 {
+                e.shootTimer = ENEMY_SHOOT_INTERVAL + (ei as f32) * 0.3
+
+                val bi: mut i32 = 0
+                for bi < MAX_BULLETS {
+                    val blt: mut ref Bullet = get_bullet(bi)
+                    if blt.alive == 0 {
+                        val bdx: f32 = pCX - (e.x + 4.0)
+                        val bdy: f32 = pCY - (e.y + 4.0)
+                        val bdist: f32 = sqrtf(bdx * bdx + bdy * bdy)
+                        if bdist > 0.0 {
+                            blt.x = e.x + 4.0
+                            blt.y = e.y + 4.0
+                            blt.dx = (bdx / bdist) * BULLET_SPEED
+                            blt.dy = (bdy / bdist) * BULLET_SPEED
+                            blt.alive = 1
+                            blt.isPlayer = 0
+                        }
+                        break
+                    }
+                    bi++
+                }
+            }
         }
+        ei++
     }
 }
 
 fn update_bullets(dt: f32) void! = {
     val pCX: f32 = player.x + 4.0
     val pCY: f32 = player.y + 4.0
-
     val bi: mut i32 = 0
-    for {
-        if bi < MAX_BULLETS {
-            val blt: mut ref Bullet = get_bullet(bi)
-            if blt.alive != 0 {
-                blt.x += blt.dx * dt
-                blt.y += blt.dy * dt
+    
+    for bi < MAX_BULLETS {
+        val blt: mut ref Bullet = get_bullet(bi)
+        if blt.alive != 0 {
+            blt.x += blt.dx * dt
+            blt.y += blt.dy * dt
 
-                val tx: i32 = (blt.x / 64.0) as i32
-                val ty: i32 = (blt.y / 64.0) as i32
-                val hitWall: mut i32 = 0
-                if tx < 0 || tx >= MAP_SIZE || ty < 0 || ty >= MAP_SIZE {
-                    hitWall = 1
-                } else {
-                    match @get(map, ty, tx) {
-                        some v => { if v > 0 { hitWall = 1 } }
-                        none => { hitWall = 1 }
-                    }
-                }
-
-                if hitWall != 0 {
-                    blt.alive = 0
-                } elif blt.isPlayer == 0 {
-                    val pdx: f32 = blt.x - pCX
-                    val pdy: f32 = blt.y - pCY
-                    if pdx * pdx + pdy * pdy < 400.0 {
-                        playerHealth -= 10
-                        blt.alive = 0
-                        if playerHealth < 0 {
-                            playerHealth = 0
-                        }
-                        hitFlashTimer = 0.2
-                    }
+            val tx: i32 = (blt.x / 64.0) as i32
+            val ty: i32 = (blt.y / 64.0) as i32
+            val hitWall: mut i32 = 0
+            if tx < 0 || tx >= MAP_SIZE || ty < 0 || ty >= MAP_SIZE {
+                hitWall = 1
+            } else {
+                match @get(map, ty, tx) {
+                    some v => { if v > 0 { hitWall = 1 } }
+                    none => { hitWall = 1 }
                 }
             }
-            bi++
-        } else {
-            break
+
+            if hitWall != 0 {
+                blt.alive = 0
+            } elif blt.isPlayer == 0 {
+                val pdx: f32 = blt.x - pCX
+                val pdy: f32 = blt.y - pCY
+                if pdx * pdx + pdy * pdy < 400.0 {
+                    playerHealth -= 10
+                    blt.alive = 0
+                    if playerHealth < 0 {
+                        playerHealth = 0
+                    }
+                    hitFlashTimer = 0.2
+                }
+            }
         }
+        bi++
     }
 }
 
@@ -314,109 +298,97 @@ fn render_sprites() void! = {
     val invDet: f32 = 1.0 / det
 
     val ei: mut i32 = 0
-    for {
-        if ei < MAX_ENEMIES {
-            val e: ref Enemy = get_enemy(ei)
-            if e.alive != 0 {
-                val dx: f32 = (e.x + 4.0) - pCX
-                val dy: f32 = (e.y + 4.0) - pCY
-                val tx: f32 = invDet * (player.dirY * dx - player.dirX * dy)
-                val ty: f32 = invDet * (-player.planeY * dx + player.planeX * dy)
+    for ei < MAX_ENEMIES {
+        val e: ref Enemy = get_enemy(ei)
+        if e.alive != 0 {
+            val dx: f32 = (e.x + 4.0) - pCX
+            val dy: f32 = (e.y + 4.0) - pCY
+            val tx: f32 = invDet * (player.dirY * dx - player.dirX * dy)
+            val ty: f32 = invDet * (-player.planeY * dx + player.planeX * dy)
 
-                if ty > 0.1 {
-                    val depth: f32 = ty / (TILE_SIZE as f32)
-                    val screenX: i32 = ((SCREEN_WIDTH as f32 / 2.0) * (1.0 + tx / ty)) as i32
-                    val spriteH: i32 = (fabsf(SCREEN_HEIGHT as f32 / depth)) as i32
-                    val spriteW: i32 = spriteH * enemyTexW / enemyTexH
+            if ty > 0.1 {
+                val depth: f32 = ty / (TILE_SIZE as f32)
+                val screenX: i32 = ((SCREEN_WIDTH as f32 / 2.0) * (1.0 + tx / ty)) as i32
+                val spriteH: i32 = (fabsf(SCREEN_HEIGHT as f32 / depth)) as i32
+                val spriteW: i32 = spriteH * enemyTexW / enemyTexH
 
-                    if spriteW > 0 {
-                        val drawStartY: mut i32 = SCREEN_HEIGHT / 2 - spriteH / 2
-                        val drawEndY: mut i32 = SCREEN_HEIGHT / 2 + spriteH / 2
-                        if drawStartY < 0 { drawStartY = 0 }
-                        if drawEndY >= SCREEN_HEIGHT { drawEndY = SCREEN_HEIGHT - 1 }
+                if spriteW > 0 {
+                    val drawStartY: mut i32 = SCREEN_HEIGHT / 2 - spriteH / 2
+                    val drawEndY: mut i32 = SCREEN_HEIGHT / 2 + spriteH / 2
+                    if drawStartY < 0 { drawStartY = 0 }
+                    if drawEndY >= SCREEN_HEIGHT { drawEndY = SCREEN_HEIGHT - 1 }
 
-                        val drawStartX: mut i32 = screenX - spriteW / 2
-                        val drawEndX: mut i32 = screenX + spriteW / 2
-                        if drawStartX < 0 { drawStartX = 0 }
-                        if drawEndX >= SCREEN_WIDTH { drawEndX = SCREEN_WIDTH - 1 }
+                    val drawStartX: mut i32 = screenX - spriteW / 2
+                    val drawEndX: mut i32 = screenX + spriteW / 2
+                    if drawStartX < 0 { drawStartX = 0 }
+                    if drawEndX >= SCREEN_WIDTH { drawEndX = SCREEN_WIDTH - 1 }
 
-                        val scaledDist: usize = (depth * 100000.0) as usize
-                        val spriteLeft: i32 = screenX - spriteW / 2
+                    val scaledDist: usize = (depth * 100000.0) as usize
+                    val spriteLeft: i32 = screenX - spriteW / 2
 
-                        val xi: mut i32 = drawStartX
-                        for {
-                            if xi < drawEndX {
-                                val zbufVal: usize = @load(@ptradd(zbuf, (xi as usize) * 8)) as usize
-                                if scaledDist < zbufVal {
-                                    val texX: i32 = ((xi - spriteLeft) * enemyTexW) / spriteW
-                                    g_src_rect.x = texX
-                                    g_src_rect.y = 0
-                                    g_src_rect.w = 1
-                                    g_src_rect.h = enemyTexH
-                                    g_dst_rect.x = xi
-                                    g_dst_rect.y = drawStartY
-                                    g_dst_rect.w = 1
-                                    g_dst_rect.h = drawEndY - drawStartY
-                                    SDL_RenderCopy(g_renderer, g_enemyTex, g_src_rect as ref void, g_dst_rect as ref void)
-                                }
-                                xi++
-                            } else {
-                                break
-                            }
+                    val xi: mut i32 = drawStartX
+                    for xi < drawEndX{
+                        val zbufVal: usize = @load(@ptradd(zbuf, (xi as usize) * 8)) as usize
+                        if scaledDist < zbufVal {
+                            val texX: i32 = ((xi - spriteLeft) * enemyTexW) / spriteW
+                            g_src_rect.x = texX
+                            g_src_rect.y = 0
+                            g_src_rect.w = 1
+                            g_src_rect.h = enemyTexH
+                            g_dst_rect.x = xi
+                            g_dst_rect.y = drawStartY
+                            g_dst_rect.w = 1
+                            g_dst_rect.h = drawEndY - drawStartY
+                            SDL_RenderCopy(g_renderer, g_enemyTex, g_src_rect as ref void, g_dst_rect as ref void)
                         }
+                        xi++
                     }
                 }
             }
-            ei++
-        } else {
-            break
         }
+        ei++
     }
 
     val bi: mut i32 = 0
-    for {
-        if bi < MAX_BULLETS {
-            val blt: ref Bullet = get_bullet(bi)
-            if blt.alive != 0 && blt.isPlayer == 0 {
-                val bdx: f32 = blt.x - pCX
-                val bdy: f32 = blt.y - pCY
-                val btx: f32 = invDet * (player.dirY * bdx - player.dirX * bdy)
-                val bty: f32 = invDet * (-player.planeY * bdx + player.planeX * bdy)
+    for bi < MAX_BULLETS {
+        val blt: ref Bullet = get_bullet(bi)
+        if blt.alive != 0 && blt.isPlayer == 0 {
+            val bdx: f32 = blt.x - pCX
+            val bdy: f32 = blt.y - pCY
+            val btx: f32 = invDet * (player.dirY * bdx - player.dirX * bdy)
+            val bty: f32 = invDet * (-player.planeY * bdx + player.planeX * bdy)
 
-                if bty > 0.1 {
-                    val depth: f32 = bty / (TILE_SIZE as f32)
-                    val bsx: i32 = ((SCREEN_WIDTH as f32 / 2.0) * (1.0 + btx / bty)) as i32
-                    val bH: mut i32 = (fabsf(SCREEN_HEIGHT as f32 / depth)) as i32 / 8
-                    if bH < 3 { bH = 3 }
-                    if bH > 80 { bH = 80 }
+            if bty > 0.1 {
+                val depth: f32 = bty / (TILE_SIZE as f32)
+                val bsx: i32 = ((SCREEN_WIDTH as f32 / 2.0) * (1.0 + btx / bty)) as i32
+                val bH: mut i32 = (fabsf(SCREEN_HEIGHT as f32 / depth)) as i32 / 8
+                if bH < 3 { bH = 3 }
+                if bH > 80 { bH = 80 }
 
-                    val bsX: mut i32 = bsx - bH / 2
-                    val beX: mut i32 = bsx + bH / 2
-                    val bsY: mut i32 = SCREEN_HEIGHT / 2 - bH / 2
-                    val beY: mut i32 = SCREEN_HEIGHT / 2 + bH / 2
-                    if bsX < 0 { bsX = 0 }
-                    if beX >= SCREEN_WIDTH { beX = SCREEN_WIDTH - 1 }
-                    if bsY < 0 { bsY = 0 }
-                    if beY >= SCREEN_HEIGHT { beY = SCREEN_HEIGHT - 1 }
+                val bsX: mut i32 = bsx - bH / 2
+                val beX: mut i32 = bsx + bH / 2
+                val bsY: mut i32 = SCREEN_HEIGHT / 2 - bH / 2
+                val beY: mut i32 = SCREEN_HEIGHT / 2 + bH / 2
+                if bsX < 0 { bsX = 0 }
+                if beX >= SCREEN_WIDTH { beX = SCREEN_WIDTH - 1 }
+                if bsY < 0 { bsY = 0 }
+                if beY >= SCREEN_HEIGHT { beY = SCREEN_HEIGHT - 1 }
 
-                    if bsx >= 0 && bsx < SCREEN_WIDTH {
-                        val bZdist: usize = @load(@ptradd(zbuf, (bsx as usize) * 8)) as usize
-                        val bZscaled: usize = (depth * 100000.0) as usize
-                        if bZscaled < bZdist {
-                            SDL_SetRenderDrawColor(g_renderer, 255 as u8, 100 as u8, 0 as u8, 255 as u8)
-                            g_aux_rect.x = bsX
-                            g_aux_rect.y = bsY
-                            g_aux_rect.w = beX - bsX
-                            g_aux_rect.h = beY - bsY
-                            SDL_RenderFillRect(g_renderer, g_aux_rect)
-                        }
+                if bsx >= 0 && bsx < SCREEN_WIDTH {
+                    val bZdist: usize = @load(@ptradd(zbuf, (bsx as usize) * 8)) as usize
+                    val bZscaled: usize = (depth * 100000.0) as usize
+                    if bZscaled < bZdist {
+                        SDL_SetRenderDrawColor(g_renderer, 255 as u8, 100 as u8, 0 as u8, 255 as u8)
+                        g_aux_rect.x = bsX
+                        g_aux_rect.y = bsY
+                        g_aux_rect.w = beX - bsX
+                        g_aux_rect.h = beY - bsY
+                        SDL_RenderFillRect(g_renderer, g_aux_rect)
                     }
                 }
             }
-            bi++
-        } else {
-            break
         }
+        bi++
     }
 }
 
