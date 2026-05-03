@@ -55,6 +55,7 @@ extern type Bullet = {
     dy: mut f32
     alive: mut i32
     isPlayer: mut i32
+    animTime: mut f32
 }
 
 extern (C, header) fn SDL_Init(flags: u32) i32! = "SDL_Init"
@@ -134,8 +135,11 @@ val g_renderer: mut ref void = none
 val g_enemyTex: mut ref void = none
 val g_gunTex: mut ref void = none
 val g_wallTex: mut ref void = none
+val g_bulletTex: mut ref void = none
 val wallTexW: mut i32 = 1
 val wallTexH: mut i32 = 1
+val bulletTexW: mut i32 = 32
+val bulletTexH: mut i32 = 32
 val g_src_rect: mut ref SDL_Rect = none
 val g_dst_rect: mut ref SDL_Rect = none
 val g_aux_rect: mut ref SDL_Rect = none
@@ -155,34 +159,21 @@ fn player_shoot() void! = {
 
     val pCX: f32 = player.x + 4.0
     val pCY: f32 = player.y + 4.0
-    val det: f32 = player.planeX * player.dirY - player.dirX * player.planeY
-    if det == 0.0 { return }
-    val invDet: f32 = 1.0 / det
 
-    val ei: mut i32 = 0
-    for ei < MAX_ENEMIES {
-        val e: mut ref Enemy = get_enemy(ei)
-        if e.alive != 0 {
-            val dx: f32 = (e.x + 4.0) - pCX
-            val dy: f32 = (e.y + 4.0) - pCY
-            val tx: f32 = invDet * (player.dirY * dx - player.dirX * dy)
-            val ty: f32 = invDet * (-player.planeY * dx + player.planeX * dy)
-            if ty > 0.0 {
-                val depth: f32 = ty / (TILE_SIZE as f32)
-                val sx: f32 = (SCREEN_WIDTH as f32 / 2.0) * (1.0 + tx / ty)
-                val cdist: f32 = sx - (SCREEN_WIDTH as f32 / 2.0)
-                val col: i32 = SCREEN_WIDTH / 2
-                val zdist: usize = @load(@ptradd(zbuf, (col as usize) * 8)) as usize
-                val ez: usize = (depth * 100000.0) as usize
-                if fabsf(cdist) < 80.0 && ez < zdist {
-                    e.health -= 1
-                    if e.health <= 0 {
-                        e.alive = 0
-                    }
-                }
-            }
+    val bi: mut i32 = 0
+    for bi < MAX_BULLETS {
+        val blt: mut ref Bullet = get_bullet(bi)
+        if blt.alive == 0 {
+            blt.x = pCX
+            blt.y = pCY
+            blt.dx = player.dirX * BULLET_SPEED
+            blt.dy = player.dirY * BULLET_SPEED
+            blt.alive = 1
+            blt.isPlayer = 1
+            blt.animTime = 0.0
+            break
         }
-        ei++
+        bi++
     }
 }
 
@@ -258,6 +249,7 @@ fn update_bullets(dt: f32) void! = {
         if blt.alive != 0 {
             blt.x += blt.dx * dt
             blt.y += blt.dy * dt
+            blt.animTime += dt
 
             val tx: i32 = (blt.x / 64.0) as i32
             val ty: i32 = (blt.y / 64.0) as i32
@@ -283,6 +275,25 @@ fn update_bullets(dt: f32) void! = {
                         playerHealth = 0
                     }
                     hitFlashTimer = 0.2
+                }
+            } else {
+                val ei: mut i32 = 0
+                for ei < MAX_ENEMIES {
+                    val e: mut ref Enemy = get_enemy(ei)
+                    if e.alive != 0 {
+                        val edx: f32 = (e.x + 4.0) - blt.x
+                        val edy: f32 = (e.y + 4.0) - blt.y
+                        val edist: f32 = sqrtf(edx * edx + edy * edy)
+                        if edist < 20.0 {
+                            e.health -= 1
+                            if e.health <= 0 {
+                                e.alive = 0
+                            }
+                            blt.alive = 0
+                            break
+                        }
+                    }
+                    ei++
                 }
             }
         }
@@ -378,17 +389,89 @@ fn render_sprites() void! = {
                     val bZdist: usize = @load(@ptradd(zbuf, (bsx as usize) * 8)) as usize
                     val bZscaled: usize = (depth * 100000.0) as usize
                     if bZscaled < bZdist {
-                        SDL_SetRenderDrawColor(g_renderer, 255 as u8, 100 as u8, 0 as u8, 255 as u8)
-                        g_aux_rect.x = bsX
-                        g_aux_rect.y = bsY
-                        g_aux_rect.w = beX - bsX
-                        g_aux_rect.h = beY - bsY
-                        SDL_RenderFillRect(g_renderer, g_aux_rect)
+                        if g_bulletTex != none {
+                            val frame: i32 = ((blt.animTime * 8.0) as i32) % 4
+                            g_src_rect.x = frame * 32
+                            g_src_rect.y = 0
+                            g_src_rect.w = 32
+                            g_src_rect.h = bulletTexH
+                            
+                            g_dst_rect.x = bsX
+                            g_dst_rect.y = bsY
+                            g_dst_rect.w = beX - bsX
+                            g_dst_rect.h = beY - bsY
+                            
+                            SDL_RenderCopy(g_renderer, g_bulletTex, g_src_rect as ref void, g_dst_rect as ref void)
+                        } else {
+                            SDL_SetRenderDrawColor(g_renderer, 255 as u8, 100 as u8, 0 as u8, 255 as u8)
+                            g_aux_rect.x = bsX
+                            g_aux_rect.y = bsY
+                            g_aux_rect.w = beX - bsX
+                            g_aux_rect.h = beY - bsY
+                            SDL_RenderFillRect(g_renderer, g_aux_rect)
+                        }
                     }
                 }
             }
         }
         bi++
+    }
+
+    val pi: mut i32 = 0
+    for pi < MAX_BULLETS {
+        val pblt: ref Bullet = get_bullet(pi)
+        if pblt.alive != 0 && pblt.isPlayer != 0 {
+            val pbdx: f32 = pblt.x - pCX
+            val pbdy: f32 = pblt.y - pCY
+            val pbtx: f32 = invDet * (player.dirY * pbdx - player.dirX * pbdy)
+            val pbty: f32 = invDet * (-player.planeY * pbdx + player.planeX * pbdy)
+
+            if pbty > 0.1 {
+                val pdepth: f32 = pbty / (TILE_SIZE as f32)
+                val pbsx: i32 = ((SCREEN_WIDTH as f32 / 2.0) * (1.0 + pbtx / pbty)) as i32
+                val pbH: mut i32 = (fabsf(SCREEN_HEIGHT as f32 / pdepth)) as i32 / 8
+                if pbH < 3 { pbH = 3 }
+                if pbH > 80 { pbH = 80 }
+
+                val pbsX: mut i32 = pbsx - pbH / 2
+                val pbeX: mut i32 = pbsx + pbH / 2
+                val pbsY: mut i32 = SCREEN_HEIGHT / 2 - pbH / 2
+                val pbeY: mut i32 = SCREEN_HEIGHT / 2 + pbH / 2
+                if pbsX < 0 { pbsX = 0 }
+                if pbeX >= SCREEN_WIDTH { pbeX = SCREEN_WIDTH - 1 }
+                if pbsY < 0 { pbsY = 0 }
+                if pbeY >= SCREEN_HEIGHT { pbeY = SCREEN_HEIGHT - 1 }
+
+                if pbsx >= 0 && pbsx < SCREEN_WIDTH {
+                    val pbZdist: usize = @load(@ptradd(zbuf, (pbsx as usize) * 8)) as usize
+                    val pbZscaled: usize = (pdepth * 100000.0) as usize
+                    if pbZscaled < pbZdist {
+                        if g_bulletTex != none {
+                            val pframe: i32 = ((pblt.animTime * 8.0) as i32) % 4
+                            g_src_rect.x = pframe * 32
+                            g_src_rect.y = 0
+                            g_src_rect.w = 32
+                            g_src_rect.h = bulletTexH
+                            
+                            g_dst_rect.x = pbsX
+                            g_dst_rect.y = pbsY
+                            g_dst_rect.w = pbeX - pbsX
+                            g_dst_rect.h = pbeY - pbsY
+                            
+                            SDL_RenderCopy(g_renderer, g_bulletTex, g_src_rect as ref void, g_dst_rect as ref void)
+                        } else {
+                            SDL_SetRenderDrawColor(g_renderer, 0 as u8, 200 as u8, 255 as u8, 255 as u8)
+                            g_aux_rect.x = pbsX
+                            g_aux_rect.y = pbsY
+                            g_aux_rect.w = pbeX - pbsX
+                            g_aux_rect.h = pbeY - pbsY
+                            SDL_RenderFillRect(g_renderer, g_aux_rect)
+                        }
+                    }
+                }
+            }
+        }
+        pi++
     }
 }
 
@@ -532,6 +615,21 @@ pub fn main() i32 = {
         trust @free(wh)
         if wallTexW <= 0 { wallTexW = 1 }
         if wallTexH <= 0 { wallTexH = 1 }
+    }
+
+    val bs: ref void = trust IMG_Load("sprites/bullet.png")
+    if bs != none {
+        g_bulletTex = trust SDL_CreateTextureFromSurface(renderer, bs)
+        trust SDL_FreeSurface(bs)
+        trust SDL_SetTextureBlendMode(g_bulletTex, 1 as i32)
+        val bw: ref void = @alloc(4)
+        val bh: ref void = @alloc(4)
+        trust SDL_QueryTexture(g_bulletTex, none as ref void, none as ref void, bw, bh)
+        bulletTexW = 32
+        bulletTexH = @load32(bh) as i32
+        trust @free(bw)
+        trust @free(bh)
+        if bulletTexH <= 0 { bulletTexH = 32 }
     }
 
     val quit: mut bool = false
