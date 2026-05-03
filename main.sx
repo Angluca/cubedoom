@@ -74,6 +74,7 @@ extern (C, header) fn SDL_CreateTextureFromSurface(renderer: ref void, surface: 
 extern (C, header) fn SDL_FreeSurface(surface: ref void) void! = "SDL_FreeSurface"
 extern (C, header) fn SDL_RenderCopy(renderer: ref void, texture: ref void, srcrect: ref void, dstrect: ref void) i32! = "SDL_RenderCopy"
 extern (C, header) fn SDL_SetTextureBlendMode(texture: ref void, blendMode: i32) i32! = "SDL_SetTextureBlendMode"
+extern (C, header) fn SDL_SetTextureColorMod(texture: ref void, r: u8, g: u8, b: u8) i32! = "SDL_SetTextureColorMod"
 extern (C, header) fn SDL_QueryTexture(texture: ref void, fmt: ref void, access: ref void, w: ref void, h: ref void) i32! = "SDL_QueryTexture"
 extern (C) fn IMG_Load(file: ref char) ref void! = "IMG_Load"
 extern (C) fn cosf(x: f32) f32! = "cosf"
@@ -773,6 +774,8 @@ pub fn main() i32 = {
                     if g_wallTex != none {
                         val texX: i32 = (wallPos * (wallTexW as f32)) as i32
                         if texX >= 0 && texX < wallTexW {
+                            trust SDL_SetTextureColorMod(g_wallTex, r, r, r)
+                            
                             g_src_rect.x = texX
                             g_src_rect.y = 0
                             g_src_rect.w = 1
