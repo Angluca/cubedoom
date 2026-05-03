@@ -327,7 +327,7 @@ fn render_sprites() void! = {
                     val spriteLeft: i32 = screenX - spriteW / 2
 
                     val xi: mut i32 = drawStartX
-                    for xi < drawEndX{
+                    for xi < drawEndX {
                         val zbufVal: usize = @load(@ptradd(zbuf, (xi as usize) * 8)) as usize
                         if scaledDist < zbufVal {
                             val texX: i32 = ((xi - spriteLeft) * enemyTexW) / spriteW
@@ -645,138 +645,134 @@ pub fn main() i32 = {
             val pCY: f32 = player.y + 4.0
 
             val i: mut i32 = 0
-            for {
-                if i < SCREEN_WIDTH {
-                    val cameraX: f32 = 2.0 * (i as f32) / 1280.0 - 1.0
-                    val rayDX: f32 = player.dirX + player.planeX * cameraX
-                    val rayDY: f32 = player.dirY + player.planeY * cameraX
+            for i < SCREEN_WIDTH {
+                val cameraX: f32 = 2.0 * (i as f32) / 1280.0 - 1.0
+                val rayDX: f32 = player.dirX + player.planeX * cameraX
+                val rayDY: f32 = player.dirY + player.planeY * cameraX
 
-                    val mX: mut i32 = (pCX / 64.0) as i32
-                    val mY: mut i32 = (pCY / 64.0) as i32
+                val mX: mut i32 = (pCX / 64.0) as i32
+                val mY: mut i32 = (pCY / 64.0) as i32
 
-                    val dDX: mut f32 = trust fabsf(1.0 / rayDX)
-                    if rayDX == 0.0 {
-                        dDX = 1e30
-                    }
+                val dDX: mut f32 = trust fabsf(1.0 / rayDX)
+                if rayDX == 0.0 {
+                    dDX = 1e30
+                }
 
-                    val dDY: mut f32 = trust fabsf(1.0 / rayDY)
-                    if rayDY == 0.0 {
-                        dDY = 1e30
-                    }
+                val dDY: mut f32 = trust fabsf(1.0 / rayDY)
+                if rayDY == 0.0 {
+                    dDY = 1e30
+                }
 
-                    val sDX: mut f32 = 0.0
-                    val sDY: mut f32 = 0.0
-                    val stepX: mut i32 = 0
-                    val stepY: mut i32 = 0
+                val sDX: mut f32 = 0.0
+                val sDY: mut f32 = 0.0
+                val stepX: mut i32 = 0
+                val stepY: mut i32 = 0
 
-                    if rayDX < 0.0 {
-                        stepX = -1
-                        sDX = (pCX / 64.0 - (mX as f32)) * dDX
-                    } else {
-                        stepX = 1
-                        sDX = ((mX as f32) + 1.0 - pCX / 64.0) * dDX
-                    }
+                if rayDX < 0.0 {
+                    stepX = -1
+                    sDX = (pCX / 64.0 - (mX as f32)) * dDX
+                } else {
+                    stepX = 1
+                    sDX = ((mX as f32) + 1.0 - pCX / 64.0) * dDX
+                }
 
-                    if rayDY < 0.0 {
-                        stepY = -1
-                        sDY = (pCY / 64.0 - (mY as f32)) * dDY
-                    } else {
-                        stepY = 1
-                        sDY = ((mY as f32) + 1.0 - pCY / 64.0) * dDY
-                    }
+                if rayDY < 0.0 {
+                    stepY = -1
+                    sDY = (pCY / 64.0 - (mY as f32)) * dDY
+                } else {
+                    stepY = 1
+                    sDY = ((mY as f32) + 1.0 - pCY / 64.0) * dDY
+                }
 
-                    val hit: mut i32 = 0
-                    val side: mut i32 = 0
+                val hit: mut i32 = 0
+                val side: mut i32 = 0
 
-                    for {
-                        if hit == 0 {
-                            if sDX < sDY {
-                                sDX += dDX
-                                mX += stepX
-                                side = 0
-                            } else {
-                                sDY += dDY
-                                mY += stepY
-                                side = 1
-                            }
-
-                            if mX < 0 || mX >= MAP_SIZE || mY < 0 || mY >= MAP_SIZE {
-                                break
-                            }
-                            match @get(map, mY, mX) {
-                                some v => {
-                                    if v > 0 {
-                                        hit = 1
-                                    }
-                                }
-                                none => {}
-                            }
+                for {
+                    if hit == 0 {
+                        if sDX < sDY {
+                            sDX += dDX
+                            mX += stepX
+                            side = 0
                         } else {
+                            sDY += dDY
+                            mY += stepY
+                            side = 1
+                        }
+
+                        if mX < 0 || mX >= MAP_SIZE || mY < 0 || mY >= MAP_SIZE {
                             break
                         }
-                    }
-
-                    val pWD: mut f32 = sDY - dDY
-                    if side == 0 {
-                        pWD = sDX - dDX
-                    }
-                    if pWD < 0.1 {
-                        pWD = 0.1
-                    }
-
-                    trust @store(@ptradd(zbuf, (i as usize) * 8), (pWD * 100000.0) as usize)
-
-                    val h: f32 = 960.0 / pWD
-                    val intensity: f32 = 1.0 / (1.0 + pWD * pWD * 0.03)
-                    val r: mut u8 = (255.0 * intensity) as u8
-                    if side == 1 {
-                        r = ((r as f32) * 0.7) as u8
-                    }
-
-                    val hitX: f32 = pCX + rayDX * pWD * 64.0
-                    val hitY: f32 = pCY + rayDY * pWD * 64.0
-                    
-                    val wallPos: mut f32 = hitX - ((mX as f32) * 64.0)
-                    if side == 1 {
-                        wallPos = hitY - ((mY as f32) * 64.0)
-                    }
-                    wallPos = wallPos - (wallPos as i32) as f32
-                    if wallPos < 0.0 { wallPos += 1.0 }
-                    
-                    if g_wallTex != none {
-                        val texX: i32 = (wallPos * (wallTexW as f32)) as i32
-                        if texX >= 0 && texX < wallTexW {
-                            trust SDL_SetTextureColorMod(g_wallTex, r, r, r)
-                            
-                            g_src_rect.x = texX
-                            g_src_rect.y = 0
-                            g_src_rect.w = 1
-                            g_src_rect.h = wallTexH
-                            
-                            g_dst_rect.x = i
-                            g_dst_rect.y = ((960.0 - h) / 2.0) as i32
-                            g_dst_rect.w = 1
-                            g_dst_rect.h = h as i32
-                            
-                            trust SDL_RenderCopy(g_renderer, g_wallTex, g_src_rect as ref void, g_dst_rect as ref void)
+                        match @get(map, mY, mX) {
+                            some v => {
+                                if v > 0 {
+                                    hit = 1
+                                }
+                            }
+                            none => {}
                         }
                     } else {
-                        trust SDL_SetRenderDrawColor(renderer, r, 0 as u8, 0 as u8, 255 as u8)
-
-                        val slice: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
-                        @deref(slice) = {
-                            x: i,
-                            y: ((960.0 - h) / 2.0) as i32,
-                            w: 1,
-                            h: h as i32
-                        }
-                        trust SDL_RenderFillRect(renderer, slice)
+                        break
                     }
-
-                    i++
-                } else {
-                    break
                 }
+
+                val pWD: mut f32 = sDY - dDY
+                if side == 0 {
+                    pWD = sDX - dDX
+                }
+                if pWD < 0.1 {
+                    pWD = 0.1
+                }
+
+                trust @store(@ptradd(zbuf, (i as usize) * 8), (pWD * 100000.0) as usize)
+
+                val h: f32 = 960.0 / pWD
+                val intensity: f32 = 1.0 / (1.0 + pWD * pWD * 0.03)
+                val r: mut u8 = (255.0 * intensity) as u8
+                if side == 1 {
+                    r = ((r as f32) * 0.7) as u8
+                }
+
+                val hitX: f32 = pCX + rayDX * pWD * 64.0
+                val hitY: f32 = pCY + rayDY * pWD * 64.0
+                
+                val wallPos: mut f32 = hitX - ((mX as f32) * 64.0)
+                if side == 1 {
+                    wallPos = hitY - ((mY as f32) * 64.0)
+                }
+                wallPos = wallPos - (wallPos as i32) as f32
+                if wallPos < 0.0 { wallPos += 1.0 }
+                
+                if g_wallTex != none {
+                    val texX: i32 = (wallPos * (wallTexW as f32)) as i32
+                    if texX >= 0 && texX < wallTexW {
+                        trust SDL_SetTextureColorMod(g_wallTex, r, r, r)
+                        
+                        g_src_rect.x = texX
+                        g_src_rect.y = 0
+                        g_src_rect.w = 1
+                        g_src_rect.h = wallTexH
+                        
+                        g_dst_rect.x = i
+                        g_dst_rect.y = ((960.0 - h) / 2.0) as i32
+                        g_dst_rect.w = 1
+                        g_dst_rect.h = h as i32
+                        
+                        trust SDL_RenderCopy(g_renderer, g_wallTex, g_src_rect as ref void, g_dst_rect as ref void)
+                    }
+                } else {
+                    trust SDL_SetRenderDrawColor(renderer, r, 0 as u8, 0 as u8, 255 as u8)
+
+                    val slice: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
+                    @deref(slice) = {
+                        x: i,
+                        y: ((960.0 - h) / 2.0) as i32,
+                        w: 1,
+                        h: h as i32
+                    }
+                    trust SDL_RenderFillRect(renderer, slice)
+                }
+
+                i++
             }
 
             val ms: f32 = 0.12
@@ -784,36 +780,25 @@ pub fn main() i32 = {
             val mar: f32 = 20.0
 
             val y: mut i32 = 0
-            for {
-                if y < MAP_SIZE {
-                    val x: mut i32 = 0
-                    for {
-                        if x < MAP_SIZE {
-                            match @get(map, y, x) {
-                                some v => {
-                                    if v > 0 {
-                                        trust SDL_SetRenderDrawColor(renderer, 120 as u8, 120 as u8, 120 as u8, 255 as u8)
-                                        val w: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
-                                        @deref(w) = {
-                                            x: (mar + (x as f32) * mt) as i32,
-                                            y: (mar + (y as f32) * mt) as i32,
-                                            w: mt as i32,
-                                            h: mt as i32
-                                        }
-                                        trust SDL_RenderFillRect(renderer, w)
-                                    }
-                                }
-                                none => {}
+            for y < MAP_SIZE {
+                val x: mut i32 = 0
+                for x < MAP_SIZE {
+                    if @get(map, y, x) is some v {
+                        if v > 0 {
+                            trust SDL_SetRenderDrawColor(renderer, 120 as u8, 120 as u8, 120 as u8, 255 as u8)
+                            val w: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
+                            @deref(w) = {
+                                x: (mar + (x as f32) * mt) as i32,
+                                y: (mar + (y as f32) * mt) as i32,
+                                w: mt as i32,
+                                h: mt as i32
                             }
-                            x++
-                        } else {
-                            break
+                            trust SDL_RenderFillRect(renderer, w)
                         }
                     }
-                    y++
-                } else {
-                    break
+                    x++
                 }
+                y++
             }
 
             trust SDL_SetRenderDrawColor(renderer, 255 as u8, 255 as u8, 0 as u8, 255 as u8)
@@ -869,8 +854,8 @@ pub fn main() i32 = {
             }
 
             trust render_hud()
-
             trust SDL_RenderPresent(renderer)
+
         } else {
             break
         }
