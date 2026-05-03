@@ -132,6 +132,9 @@ val gunTexH: mut i32 = 1
 val g_renderer: mut ref void = none
 val g_enemyTex: mut ref void = none
 val g_gunTex: mut ref void = none
+val g_wallTex: mut ref void = none
+val wallTexW: mut i32 = 1
+val wallTexH: mut i32 = 1
 val g_src_rect: mut ref SDL_Rect = none
 val g_dst_rect: mut ref SDL_Rect = none
 val g_aux_rect: mut ref SDL_Rect = none
@@ -543,6 +546,21 @@ pub fn main() i32 = {
         if gunTexH <= 0 { gunTexH = 1 }
     }
 
+    val ws: ref void = trust IMG_Load("sprites/wall_texture.jpg")
+    if ws != none {
+        g_wallTex = trust SDL_CreateTextureFromSurface(renderer, ws)
+        trust SDL_FreeSurface(ws)
+        val ww: ref void = @alloc(4)
+        val wh: ref void = @alloc(4)
+        trust SDL_QueryTexture(g_wallTex, none as ref void, none as ref void, ww, wh)
+        wallTexW = @load32(ww) as i32
+        wallTexH = @load32(wh) as i32
+        trust @free(ww)
+        trust @free(wh)
+        if wallTexW <= 0 { wallTexW = 1 }
+        if wallTexH <= 0 { wallTexH = 1 }
+    }
+
     val quit: mut bool = false
     val evt: ref SDL_Event = @alloc(@sizeof(SDL_Event))
     val lastTime: mut u32 = trust SDL_GetTicks()
@@ -742,16 +760,43 @@ pub fn main() i32 = {
                         r = ((r as f32) * 0.7) as u8
                     }
 
-                    trust SDL_SetRenderDrawColor(renderer, r, 0 as u8, 0 as u8, 255 as u8)
-
-                    val slice: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
-                    @deref(slice) = {
-                        x: i,
-                        y: ((960.0 - h) / 2.0) as i32,
-                        w: 1,
-                        h: h as i32
+                    val hitX: f32 = pCX + rayDX * pWD * 64.0
+                    val hitY: f32 = pCY + rayDY * pWD * 64.0
+                    
+                    val wallPos: mut f32 = hitX - ((mX as f32) * 64.0)
+                    if side == 1 {
+                        wallPos = hitY - ((mY as f32) * 64.0)
                     }
-                    trust SDL_RenderFillRect(renderer, slice)
+                    wallPos = wallPos - (wallPos as i32) as f32
+                    if wallPos < 0.0 { wallPos += 1.0 }
+                    
+                    if g_wallTex != none {
+                        val texX: i32 = (wallPos * (wallTexW as f32)) as i32
+                        if texX >= 0 && texX < wallTexW {
+                            g_src_rect.x = texX
+                            g_src_rect.y = 0
+                            g_src_rect.w = 1
+                            g_src_rect.h = wallTexH
+                            
+                            g_dst_rect.x = i
+                            g_dst_rect.y = ((960.0 - h) / 2.0) as i32
+                            g_dst_rect.w = 1
+                            g_dst_rect.h = h as i32
+                            
+                            trust SDL_RenderCopy(g_renderer, g_wallTex, g_src_rect as ref void, g_dst_rect as ref void)
+                        }
+                    } else {
+                        trust SDL_SetRenderDrawColor(renderer, r, 0 as u8, 0 as u8, 255 as u8)
+
+                        val slice: mut ref SDL_Rect = @alloc(@sizeof(SDL_Rect))
+                        @deref(slice) = {
+                            x: i,
+                            y: ((960.0 - h) / 2.0) as i32,
+                            w: 1,
+                            h: h as i32
+                        }
+                        trust SDL_RenderFillRect(renderer, slice)
+                    }
 
                     i++
                 } else {
